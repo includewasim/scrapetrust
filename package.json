@@ -1,0 +1,9 @@
+{
+  "name": "scrapetrust",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:api": "pnpm --filter api dev",
+    "dev:dashboard": "pnpm --filter dashboard dev"
+  }
+}

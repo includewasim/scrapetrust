@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Collector {
+  id           String   @id @default(cuid())
+  bdCollectorId String
+  name         String
+  sourceUrl    String
+  platform     String
+  fieldSpec    Json     // field name -> description, used for self-heal prompts
+  createdAt    DateTime @default(now())
+
+  runs         Run[]
+  healEvents   HealEvent[]
+}
+
+model Run {
+  id            String   @id @default(cuid())
+  collectorId   String
+  collector     Collector @relation(fields: [collectorId], references: [id])
+  rowCount      Int
+  fieldNullRates Json     // { fieldName: 0.0-1.0 }
+  driftSeverity String   // none | medium | high | critical
+  driftReasons  Json     // string[]
+  runAt         DateTime @default(now())
+
+  listings      Listing[]
+}
+
+model Listing {
+  id             String   @id @default(cuid())
+  runId          String
+  run            Run      @relation(fields: [runId], references: [id])
+  productId      String
+  productName    String
+  price          Float?
+  currency       String?
+  inStock        Boolean?
+  sourceUrl      String
+  scrapedAt      DateTime
+
+  @@index([productId])
+}
+
+model HealEvent {
+  id                  String   @id @default(cuid())
+  collectorId         String
+  collector           Collector @relation(fields: [collectorId], references: [id])
+  fieldName           String
+  fieldDescription    String
+  oldSelector         String?
+  newSelector         String?
+  sampleValuesBefore  Json     // string[]
+  sampleValuesAfter   Json     // string[]
+  rowCountBefore      Int
+  rowCountAfter       Int
+
+  riskLevel           String   // low | medium | high
+  verdict             String   // safe_to_promote | needs_review | reject
+  reasoning           String
+  semanticDriftDetected Boolean
+  confidence          Float
+
+  wasChaosInjection   Boolean  @default(false)
+  expectedVerdict     String?  // only set when wasChaosInjection = true
+  correct             Boolean? // computed: verdict matches expectedVerdict
+
+  createdAt           DateTime @default(now())
+}
